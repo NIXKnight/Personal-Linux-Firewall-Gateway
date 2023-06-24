@@ -1,0 +1,3 @@
+venv
+ansible-playbooks/external-roles/*
+!ansible-playbooks/external-roles/.keep
