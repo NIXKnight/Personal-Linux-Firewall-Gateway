@@ -1,0 +1,36 @@
+name: Build ntopng Container Image
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docker/ntopng/run.sh"
+      - "docker/ntopng/Dockerfile"
+      - .github/workflows/ntopng-container-image-build.yml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Get ntopng Version
+        id: vars
+        shell: bash
+        run: |
+          wget https://packages.ntop.org/apt-stable/bullseye/x64/Packages
+          NTOP_VERSION=$(cat Packages | grep 'Package: ntopng' -A3 | grep 'Version' | awk '{print $2}' | tail -1)
+          echo ::set-output name=NTOP_VERSION::${NTOP_VERSION}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2.1.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3.2.0
+        with:
+          context: docker/ntopng/
+          push: true
+          tags: "${{ secrets.DOCKER_HUB_USERNAME }}/ntopng:latest,${{ secrets.DOCKER_HUB_USERNAME }}/ntopng:${{ steps.vars.outputs.NTOP_VERSION }}"
