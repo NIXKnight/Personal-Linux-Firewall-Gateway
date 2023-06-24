@@ -1,0 +1,10 @@
+---
+- name: Setup Firewall
+  hosts: all
+  gather_facts: yes
+  become: True
+  roles:
+    - role: linux_common
+      when: RUN_LINUX_COMMON is defined and RUN_LINUX_COMMON
+    - role: motd
+      when: RUN_MOTD is defined and RUN_MOTD

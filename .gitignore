@@ -1,3 +1,6 @@
 venv
 ansible-playbooks/external-roles/*
 !ansible-playbooks/external-roles/.keep
+ansible-playbooks/extravars/vault.yml
+ansible-playbooks/extravars/conn_password
+ansible-playbooks/extravars/vault_password
