@@ -1,0 +1,17 @@
+---
+# tasks file for podman
+- name: Setup Volume(s)
+  containers.podman.podman_volume:
+    name: "{{ item }}"
+    state: "present"
+  with_items: "{{ PODMAN_VOLUMES }}"
+
+- name: Generate Pod Template
+  ansible.builtin.template:
+    src: "templates/pod.yaml.j2"
+    dest: "{{ PODMAN_KUBE_FILE }}"
+
+- name: Setup Pod(s)
+  containers.podman.podman_play:
+    kube_file: "{{ PODMAN_KUBE_FILE }}"
+    state: "started"

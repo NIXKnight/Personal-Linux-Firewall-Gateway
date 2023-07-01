@@ -1,0 +1,57 @@
+# ntopng
+NTOP_CONFIG:
+  KUBE_FILE: "{{ NTOP_KUBE_FILE }}"
+  VOLUMES: [ "ntopng" ]
+  CONFIGMAPS:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ntopng
+      data:
+        config: "--community --dns-mode 1 --interface {{ FW_WAN_INTERFACE }} --interface {{ FW_LAN_INTERFACE }}"
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: ntopng
+      spec:
+        hostNetwork: true
+        volumes:
+          - name: ntopng
+            persistentVolumeClaim:
+              claimName: ntopng
+        containers:
+          - name: ntopng
+            image: docker.io/nixknight/ntopng:latest
+            env:
+              - name: NTOP_CONFIG
+                valueFrom:
+                  configMapKeyRef: { name: ntopng, key: config }
+            volumeMounts:
+              - mountPath: "/var/lib/ntopng"
+                name: ntopng
+            securityContext:
+              privileged: true
+              allowPrivilegeEscalation: true
+
+# redis
+REDIS_CONFIG:
+  KUBE_FILE: "{{ REDIS_KUBE_FILE }}"
+  VOLUMES: [ "redis" ]
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: redis
+      spec:
+        hostNetwork: true
+        volumes:
+          - name: redis
+            persistentVolumeClaim:
+              claimName: redis
+        containers:
+          - name: redis
+            image: docker.io/library/redis:7.0.11-alpine3.18
+            volumeMounts:
+              - mountPath: "/data"
+                name: redis
