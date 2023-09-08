@@ -1,0 +1,31 @@
+---
+# tasks file for acme
+- name: Clone acme.sh Git Repository
+  git:
+    dest: "{{ ACME_DIR }}"
+    repo: "{{ ACME_GIT_REPO }}"
+    version: "{{ ACME_GIT_VERSION }}"
+    depth: 1
+
+- name: Create Directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ ACME_CERT_DIR }}"
+    - "{{ ACME_HOME_DIR }}"
+
+- name: Provision LetsEncrypt SSL Certificate
+  shell: "{{ ACME_ISSUE_COMMAND }}"
+  args:
+    executable: "/bin/bash"
+  environment: "{{ ACME_ENVIRONMENT_VARS }}"
+
+- name: Setup ACME Renewal Cron Job
+  cron:
+    name: "ACME Renewal"
+    minute: "0"
+    hour: "3"
+    day: "1"
+    month: "*/1"
+    job: "{{ ACME_RENEW_CRON_COMMAND }}"

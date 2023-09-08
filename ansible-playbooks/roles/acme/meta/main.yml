@@ -1,0 +1,9 @@
+dependencies: []
+galaxy_info:
+  author: Saad Ali
+  description: Provision a LetsEncrypt SSL Certificate using acme.sh
+  min_ansible_version: 8.1
+  platforms:
+  - name: Debian
+    versions:
+      - bookworm

@@ -5,7 +5,7 @@
 {% endfor %}
 {% endif %}
 {% if PODMAN_KUBE_SECRET_MANIFESTS is defined and PODMAN_KUBE_SECRET_MANIFESTS | length > 0 %}
-{% for SECRET in PODMAN_KUBE_CONFIGMAP_MANIFESTS %}
+{% for SECRET in PODMAN_KUBE_SECRET_MANIFESTS %}
 ---
 {{ SECRET | to_nice_yaml(indent=2) }}
 {% endfor %}

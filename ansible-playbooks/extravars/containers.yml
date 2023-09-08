@@ -8,7 +8,7 @@ NTOP_CONFIG:
       metadata:
         name: ntopng
       data:
-        config: "--community --dns-mode 1 --interface {{ FW_WAN_INTERFACE }} --interface {{ FW_LAN_INTERFACE }}"
+        config: "--community --dns-mode 1 --interface {{ FIREWALL_WAN_INTERFACE }} --interface {{ FIREWALL_LAN_INTERFACE }}"
   PODS:
     - apiVersion: v1
       kind: Pod
@@ -55,3 +55,141 @@ REDIS_CONFIG:
             volumeMounts:
               - mountPath: "/data"
                 name: redis
+
+# grafana
+GRAFANA_CONFIG:
+  KUBE_FILE: "{{ GRAFANA_KUBE_FILE }}"
+  VOLUMES: [ "grafana" ]
+  CONFIGMAPS:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: grafana
+      data:
+        TZ: "Asia/Karachi"
+        GF_DEFAULT_INSTANCE_NAME: "{{ GRAFANA_INSTANCE_NAME }}"
+        GF_SERVER_HTTP_ADDR: "{{ GRAFANA_HTTP_ADDR }}"
+        GF_SERVER_HTTP_PORT: "{{ GRAFANA_HTTP_PORT }}"
+        GF_SERVER_ENFORCE_DOMAIN: "{{ GRAFANA_ROOT_URL }}"
+        GF_SERVER_ROUTER_LOGGING: False
+        GF_SERVER_ENABLE_GZIP: False
+        GF_SMTP_ENABLED: True
+        GF_SMTP_FROM_ADDRESS: "{{ GRAFANA_SMTP_FROM_ADDRESS }}"
+        GF_SMTP_FROM_NAME: "{{ GRAFANA_SMTP_FROM_NAME }}"
+        GF_INSTALL_PLUGINS: "{{ GRAFANA_PLUGINS }}"
+  SECRETS:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: grafana
+      stringData:
+        GF_SECURITY_ADMIN_USER: "{{ GRAFANA_ADMIN_USER }}"
+        GF_SECURITY_ADMIN_PASSWORD: "{{ GRAFANA_ADMIN_PASSWORD }}"
+        GF_SMTP_HOST: "{{ GRAFANA_SMTP_HOST }}"
+        GF_SMTP_USER: "{{ GRAFANA_SMTP_USER }}"
+        GF_SMTP_PASSWORD: "{{ GRAFANA_SMTP_PASSWORD }}"
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: grafana
+      spec:
+        hostNetwork: true
+        volumes:
+          - name: grafana
+            persistentVolumeClaim:
+              claimName: grafana
+        containers:
+          - name: grafana
+            image: docker.io/grafana/grafana-oss:10.1.1
+            envFrom:
+              - configMapRef: { name: grafana }
+              - secretRef: { name: grafana }
+            volumeMounts:
+              - mountPath: "/var/lib/grafana"
+                name: grafana
+
+# nginx
+NGINX_CONFIG:
+  KUBE_FILE: "{{ NGINX_KUBE_FILE }}"
+  CONFIGMAPS:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: nginx
+      data:
+        nginx_config.conf: |
+          # NGINX HTTP Core Module Parameters
+          tcp_nopush on;
+          tcp_nodelay on;
+          types_hash_max_size 2048;
+          server_names_hash_bucket_size 64;
+          server_tokens off;
+
+          # NGINX Auto Index Module Parameters
+          autoindex off;
+
+          # NGINX HTTP Headers Module Parameters
+          add_header X-Frame-Options SAMEORIGIN;
+          add_header X-Content-Type-Options nosniff;
+          add_header X-XSS-Protection "1; mode=block";
+
+          # NGINX HTTP SSL Module Parameters
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_session_cache shared:SSL:10m;
+          ssl_session_timeout 10m;
+          ssl_prefer_server_ciphers on;
+          ssl_certificate /etc/LetsEncrypt/{{ ACME_DOMAIN_NAME }}/{{ ACME_DOMAIN_NAME }}-fullchain.crt;
+          ssl_certificate_key /etc/LetsEncrypt/{{ ACME_DOMAIN_NAME }}/{{ ACME_DOMAIN_NAME }}.key;
+          ssl_ciphers 'ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384';
+        grafana.conf: |
+          map $http_upgrade $connection_upgrade {
+            default upgrade;
+            '' close;
+          }
+
+          upstream grafana {
+            server {{ GRAFANA_HTTP_ADDR }}:{{ GRAFANA_HTTP_PORT }};
+          }
+
+          server {
+            listen 443 ssl;
+            server_name {{ GRAFANA_DOMAIN }};
+
+            location / {
+              proxy_set_header Host $http_host;
+              proxy_set_header X-Forward-For $proxy_add_x_forwarded_for;
+              proxy_pass http://grafana;
+            }
+
+            location /api/live/ {
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection $connection_upgrade;
+              proxy_set_header Host $http_host;
+              proxy_pass http://grafana;
+            }
+          }
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: nginx
+      spec:
+        hostNetwork: true
+        volumes:
+          - name: nginx
+            ConfigMap:
+              name: nginx
+          - name: certs
+            hostPath:
+              path: /etc/LetsEncrypt
+              type: Directory
+        containers:
+          - name: nginx
+            image: docker.io/library/nginx:1.25.2-bookworm
+            volumeMounts:
+              - mountPath: "/etc/nginx/conf.d"
+                name: nginx
+              - mountPath: "/etc/LetsEncrypt"
+                name: certs

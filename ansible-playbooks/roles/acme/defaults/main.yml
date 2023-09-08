@@ -1,0 +1,21 @@
+---
+# defaults file for acme
+ACME_DIR: "/opt/acme.sh"
+ACME_HOME_DIR: "/etc/acme.sh"
+ACME_GIT_REPO: "https://github.com/acmesh-official/acme.sh.git"
+ACME_GIT_VERSION: ""
+ACME_SHELL_SCRIPT: "{{ ACME_DIR }}/acme.sh"
+ACME_DOMAINS:
+  PRIMARY: ""
+  ALT: []
+ACME_CERT_DIR: "/etc/LetsEncrypt/{{ ACME_DOMAINS.PRIMARY }}"
+ACME_CERT_FILE_PATH: "{{ ACME_CERT_DIR }}/{{ ACME_DOMAINS.PRIMARY }}.crt"
+ACME_KEY_FILE_PATH: "{{ ACME_CERT_DIR }}/{{ ACME_DOMAINS.PRIMARY }}.key"
+ACME_CA_FILE_PATH: "{{ ACME_CERT_DIR }}/{{ ACME_DOMAINS.PRIMARY }}-ca.crt"
+ACME_FULLCHAIN_FILE_PATH: "{{ ACME_CERT_DIR }}/{{ ACME_DOMAINS.PRIMARY }}-fullchain.crt"
+ACME_LOG_FILE: "/var/log/acme.sh.log"
+ACME_ENVIRONMENT_VARS: ""
+ACME_ISSUE_COMMAND: |
+  {{ ACME_SHELL_SCRIPT }} --issue --dns dns_aws --config-home {{ ACME_HOME_DIR }} --log {{ ACME_LOG_FILE }} {% if ACME_DOMAINS.PRIMARY is defined and ACME_DOMAINS.PRIMARY | length %}-d {{ ACME_DOMAINS.PRIMARY }}{% endif %}{% if ACME_DOMAINS.ALT is defined and ACME_DOMAINS.ALT | length %}{% for domain in ACME_DOMAINS.ALT %} -d "{{ domain }}"{% endif %}
+ACME_RENEW_CRON_COMMAND: |
+  {{ ACME_SHELL_SCRIPT }} --cron --home {{ ACME_HOME_DIR }} --log {{ ACME_LOG_FILE }}

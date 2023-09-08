@@ -8,6 +8,10 @@
       when: RUN_LINUX_COMMON is defined and RUN_LINUX_COMMON
     - role: motd
       when: RUN_MOTD is defined and RUN_MOTD
+    - role: acme
+      when: RUN_ACME is defined and RUN_ACME
+    - role: firewall
+      when: RUN_FIREWALL is defined and RUN_FIREWALL
     # redis
     - role: podman
       PODMAN_VOLUMES: "{{ REDIS_CONFIG.VOLUMES }}"
@@ -21,6 +25,17 @@
       PODMAN_KUBE_POD_MANIFESTS: "{{ NTOP_CONFIG.PODS }}"
       PODMAN_KUBE_FILE: "{{ NTOP_CONFIG.KUBE_FILE }}"
       when: RUN_NTOPNG is defined and RUN_NTOPNG
-    # firewall
-    - role: firewall
-      when: RUN_FIREWALL is defined and RUN_FIREWALL
+    # grafana
+    - role: podman
+      PODMAN_VOLUMES: "{{ GRAFANA_CONFIG.VOLUMES }}"
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ GRAFANA_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_SECRET_MANIFESTS: "{{ GRAFANA_CONFIG.SECRETS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ GRAFANA_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ GRAFANA_CONFIG.KUBE_FILE }}"
+      when: RUN_GRAFANA is defined and RUN_GRAFANA
+    # nginx
+    - role: podman
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ NGINX_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ NGINX_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ NGINX_CONFIG.KUBE_FILE }}"
+      when: RUN_NGINX is defined and RUN_NGINX

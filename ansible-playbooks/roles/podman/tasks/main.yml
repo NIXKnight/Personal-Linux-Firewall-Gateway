@@ -1,5 +1,10 @@
 ---
 # tasks file for podman
+- name: Check if {{ PODMAN_KUBE_FILE }} Exists
+  stat:
+    path: "{{ PODMAN_KUBE_FILE }}"
+  register: kube_file_stat
+
 - name: Setup Volume(s)
   containers.podman.podman_volume:
     name: "{{ item }}"
@@ -10,8 +15,17 @@
   ansible.builtin.template:
     src: "templates/pod.yaml.j2"
     dest: "{{ PODMAN_KUBE_FILE }}"
+  register: kube_file_generate
+
+- name: Destroy Existing Pod(s)
+  containers.podman.podman_play:
+    kube_file: "{{ PODMAN_KUBE_FILE }}"
+    state: "absent"
+  register: kube_pods_state
+  when: kube_file_generate.changed
 
 - name: Setup Pod(s)
   containers.podman.podman_play:
     kube_file: "{{ PODMAN_KUBE_FILE }}"
     state: "started"
+  when: kube_pods_state.changed or kube_file_generate.changed

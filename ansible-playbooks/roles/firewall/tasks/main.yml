@@ -8,11 +8,11 @@
     vtype: multiselect
   with_items: "{{ FIREWALL_DEBCONF_PACKAGE_QUESTIONS }}"
 
-# - name: Install iptables-persistent
-#   ansible.builtin.apt:
-#     name: "iptables-persistent"
-#     state: present
-#     update_cache: yes
+- name: Install iptables-persistent
+  ansible.builtin.apt:
+    name: "iptables-persistent"
+    state: present
+    update_cache: yes
 
 - name: Generate IPTables Rules Shell Script
   template:
