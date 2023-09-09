@@ -1,0 +1,9 @@
+dependencies: []
+galaxy_info:
+  author: Saad Ali
+  description: Create InfluxDB database and users.
+  min_ansible_version: 8.1
+  platforms:
+  - name: Debian
+    versions:
+      - bookworm

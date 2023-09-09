@@ -25,6 +25,16 @@
       PODMAN_KUBE_POD_MANIFESTS: "{{ NTOP_CONFIG.PODS }}"
       PODMAN_KUBE_FILE: "{{ NTOP_CONFIG.KUBE_FILE }}"
       when: RUN_NTOPNG is defined and RUN_NTOPNG
+    # influxdb
+    - role: podman
+      PODMAN_VOLUMES: "{{ INFLUXDB_CONFIG.VOLUMES }}"
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ INFLUXDB_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_SECRET_MANIFESTS: "{{ INFLUXDB_CONFIG.SECRETS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ INFLUXDB_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ INFLUXDB_CONFIG.KUBE_FILE }}"
+      when: RUN_INFLUXDB is defined and RUN_INFLUXDB
+    - role: influxdb_db_users
+      when: RUN_INFLUXDB is defined and RUN_INFLUXDB
     # grafana
     - role: podman
       PODMAN_VOLUMES: "{{ GRAFANA_CONFIG.VOLUMES }}"

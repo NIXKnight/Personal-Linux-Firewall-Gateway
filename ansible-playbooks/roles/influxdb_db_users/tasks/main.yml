@@ -1,0 +1,38 @@
+---
+# tasks file for influxdb_db_users
+- name: Pause for 10 Seconds for InfluxDB Init
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Create InfluxDB Databases
+  influxdb_manage:
+    host: "{{ INFLUXDB_HOST }}"
+    admin_user: "{{ INFLUXDB_ADMIN_USER }}"
+    admin_password: "{{ INFLUXDB_ADMIN_PASSWORD }}"
+    database: "{{ item.database }}"
+    state: present
+    action: database
+  with_items: "{{ INFLUXDB_DATABASES }}"
+
+- name: Create InfluxDB Users
+  influxdb_manage:
+    host: "{{ INFLUXDB_HOST }}"
+    admin_user: "{{ INFLUXDB_ADMIN_USER }}"
+    admin_password: "{{ INFLUXDB_ADMIN_PASSWORD }}"
+    username: "{{ item.username }}"
+    password: "{{ item.password }}"
+    state: present
+    action: user
+  with_items: "{{ INFLUXDB_DATABASES }}"
+
+- name: Grant All Privileges to Users
+  influxdb_manage:
+    host: "{{ INFLUXDB_HOST }}"
+    admin_user: "{{ INFLUXDB_ADMIN_USER }}"
+    admin_password: "{{ INFLUXDB_ADMIN_PASSWORD }}"
+    database: "{{ item.database }}"
+    username: "{{ item.username }}"
+    privilege: "{{ item.user_privilege }}"
+    state: present
+    action: grant
+  with_items: "{{ INFLUXDB_DATABASES }}"

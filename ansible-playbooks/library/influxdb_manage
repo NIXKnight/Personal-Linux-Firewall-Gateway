@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+
+# Generated through ChatGPT because I don't trust that the officially deprecated
+# InfluxDB 1.x python client library would work on Python 3.11. This uses Requests
+# to create InfluxDB 1.x databases and users using the InfluxDB 1.x HTTP API.
+
+from ansible.module_utils.basic import *
+import requests
+
+def query_influxdb(host, port, admin_user, admin_password, query):
+    url = f'http://{host}:{port}/query'
+    params = {'q': query}
+    auth = (admin_user, admin_password)
+    response = requests.post(url, params=params, auth=auth)
+
+    if response.status_code != 200:
+        return False, response.content.decode('utf-8')
+
+    return True, None
+
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            host=dict(required=True, type='str'),
+            port=dict(required=False, default=8086, type='int'),
+            admin_user=dict(required=True, type='str'),
+            admin_password=dict(required=True, type='str', no_log=True),
+            database=dict(required=False, type='str'),
+            username=dict(required=False, type='str'),
+            password=dict(required=False, type='str', no_log=True),
+            privilege=dict(required=False, type='str', choices=['READ', 'WRITE', 'ALL']),
+            state=dict(required=True, type='str', choices=['present', 'absent']),
+            action=dict(required=True, type='str', choices=['database', 'user', 'grant'])
+        )
+    )
+
+    host = module.params['host']
+    port = module.params['port']
+    admin_user = module.params['admin_user']
+    admin_password = module.params['admin_password']
+    database = module.params['database']
+    username = module.params['username']
+    password = module.params['password']
+    privilege = module.params['privilege']
+    state = module.params['state']
+    action = module.params['action']
+
+    if action == 'database':
+        query = f'CREATE DATABASE {database}' if state == 'present' else f'DROP DATABASE {database}'
+    elif action == 'user':
+        query = f'CREATE USER "{username}" WITH PASSWORD \'{password}\'' if state == 'present' else f'DROP USER "{username}"'
+    elif action == 'grant':
+        query = f'GRANT {privilege} ON {database} TO "{username}"' if state == 'present' else f'REVOKE {privilege} ON {database} FROM "{username}"'
+
+    success, error_message = query_influxdb(host, port, admin_user, admin_password, query)
+
+    if not success:
+        module.fail_json(msg=f'Failed to execute query: {error_message}')
+    else:
+        module.exit_json(changed=True, msg=f'Executed query: {query}')
+
+if __name__ == '__main__':
+    main()
