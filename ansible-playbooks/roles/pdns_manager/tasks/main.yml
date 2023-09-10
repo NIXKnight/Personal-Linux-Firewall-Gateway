@@ -1,0 +1,36 @@
+---
+# tasks file for pdns_manager
+- name: Create DNS Zone(s)
+  uri:
+    url: "http://{{ PDNS_MANAGER_API_HOST }}:{{ PDNS_MANAGER_API_PORT }}/api/v1/servers/localhost/zones"
+    method: POST
+    body_format: json
+    body:
+      name: "{{ item.domain_name }}"
+      kind: "Native"
+      dnssec: false
+      nameservers: "{{ item.nameservers }}"
+    headers:
+      X-API-Key: "{{ PDNS_MANAGER_API_KEY }}"
+    status_code: [200, 201, 409]
+  with_items: "{{ POWERDNS_MANAGER_DOMAINS }}"
+
+- name: Add Record(s) to Zone(s)
+  uri:
+    url: "http://{{ PDNS_MANAGER_API_HOST }}:{{ PDNS_MANAGER_API_PORT }}/api/v1/servers/localhost/zones/{{ item.0.domain_name }}"
+    method: PATCH
+    body_format: json
+    body:
+      rrsets:
+        - name: "{{ item.1.name }}"
+          type: "{{ item.1.type }}"
+          ttl: "{{ item.1.ttl }}"
+          changetype: "REPLACE"
+          records:
+            - content: "{{ item.1.content }}"
+    headers:
+      X-API-Key: "{{ PDNS_MANAGER_API_KEY }}"
+    status_code: [200, 204]
+  with_subelements:
+    - "{{ POWERDNS_MANAGER_DOMAINS }}"
+    - records

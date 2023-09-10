@@ -1,0 +1,5 @@
+---
+# defaults file for pdns_manager
+PDNS_MANAGER_API_HOST: ""
+PDNS_MANAGER_API_PORT: ""
+POWERDNS_MANAGER_DOMAINS: []

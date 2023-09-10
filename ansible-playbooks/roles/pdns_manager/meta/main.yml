@@ -1,0 +1,10 @@
+dependencies: []
+galaxy_info:
+  author: Saad Ali
+  description: Manage PowerDNS DNS zones and their records.
+  min_ansible_version: 8.1
+  platforms:
+  - name: Debian
+    versions:
+      - bookworm
+
