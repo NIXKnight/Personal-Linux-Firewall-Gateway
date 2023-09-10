@@ -1,7 +1,13 @@
+# Install these requirements using:
+# ansible-galaxy install --roles-path ./external-roles -r ../requirements/requirements.yml
 - name: linux_common
   src: https://github.com/NIXKnight/Ansible-LinuxCommon.git
   version: master
 
 - name: motd
   src: https://github.com/NIXKnight/Ansible-MessageOfTheDay.git
+  version: master
+
+- name: mysql_db_users
+  src: https://github.com/NIXKnight/Ansible-MySQL-DB-User.git
   version: master

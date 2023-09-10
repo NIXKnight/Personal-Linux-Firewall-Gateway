@@ -18,6 +18,15 @@
       PODMAN_KUBE_POD_MANIFESTS: "{{ REDIS_CONFIG.PODS }}"
       PODMAN_KUBE_FILE: "{{ REDIS_CONFIG.KUBE_FILE }}"
       when: RUN_REDIS is defined and RUN_REDIS
+    # mysql
+    - role: podman
+      PODMAN_VOLUMES: "{{ MARIADB_CONFIG.VOLUMES }}"
+      PODMAN_KUBE_SECRET_MANIFESTS: "{{ MARIADB_CONFIG.SECRETS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ MARIADB_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ MARIADB_CONFIG.KUBE_FILE }}"
+      when: RUN_MARIADB is defined and RUN_MARIADB
+    - role: mysql_db_users
+      when: RUN_MARIADB is defined and RUN_MARIADB
     # ntopng
     - role: podman
       PODMAN_VOLUMES: "{{ NTOP_CONFIG.VOLUMES }}"
@@ -43,6 +52,13 @@
       PODMAN_KUBE_POD_MANIFESTS: "{{ GRAFANA_CONFIG.PODS }}"
       PODMAN_KUBE_FILE: "{{ GRAFANA_CONFIG.KUBE_FILE }}"
       when: RUN_GRAFANA is defined and RUN_GRAFANA
+    # powerdns
+    - role: podman
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ POWERDNS_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_SECRET_MANIFESTS: "{{ POWERDNS_CONFIG.SECRETS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ POWERDNS_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ POWERDNS_CONFIG.KUBE_FILE }}"
+      when: RUN_POWERDNS is defined and RUN_POWERDNS
     # nginx
     - role: podman
       PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ NGINX_CONFIG.CONFIGMAPS }}"

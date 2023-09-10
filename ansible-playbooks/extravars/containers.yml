@@ -157,6 +157,108 @@ GRAFANA_CONFIG:
               - mountPath: "/var/lib/grafana"
                 name: grafana
 
+# mariadb
+MARIADB_CONFIG:
+  KUBE_FILE: "{{ MARIADB_KUBE_FILE }}"
+  VOLUMES: [ "mariadb" ]
+  SECRETS:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: mariadb
+      stringData:
+        MYSQL_ROOT_PASSWORD: "{{ MARIADB_ROOT_PASSWORD }}"
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: mariadb
+      spec:
+        hostNetwork: true
+        volumes:
+          - name: mariadb
+            persistentVolumeClaim:
+              claimName: mariadb
+        containers:
+          - name: server
+            image: docker.io/library/mariadb:10.11.5-jammy
+            envFrom:
+              - secretRef: { name: mariadb }
+            volumeMounts:
+              - mountPath: "/var/lib/mysql"
+                name: mariadb
+
+# powerdns
+POWERDNS_CONFIG:
+  KUBE_FILE: "{{ POWERDNS_KUBE_FILE }}"
+  CONFIGMAPS:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: pdns-server
+      data:
+        PDNS_MYSQL_HOST: "{{ PDNS_MYSQL_HOST }}"
+        PDNS_MYSQL_USERNAME: "{{ PDNS_MYSQL_USERNAME }}"
+        PDNS_MYSQL_DATABASE: "{{ PDNS_MYSQL_DATABASE }}"
+        PDNS_API_ADDRESS: "{{ PDNS_API_ADDRESS }}"
+        PDNS_LOCAL_PORT: "{{ PDNS_LOCAL_PORT }}"
+        PDNS_API_ADDRESS: "{{ PDNS_API_ADDRESS }}"
+        PDNS_API_PORT: "{{ PDNS_API_PORT }}"
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: pdns-recursor
+      data:
+        PDNS_RECURSOR_LOCAL_DNS_ADDRESS: "{{ PDNS_RECURSOR_LOCAL_DNS_ADDRESS }}"
+        PDNS_RECURSOR_LOCAL_DNS_PORT: "{{ PDNS_RECURSOR_LOCAL_DNS_PORT }}"
+        PDNS_RECURSOR_UPSTREAM_RESOLVERS: "{{ PDNS_RECURSOR_UPSTREAM_RESOLVERS }}"
+        PDNS_RECURSOR_LOCAL_ZONE: "{{ PDNS_RECURSOR_LOCAL_ZONE }}"
+  SECRETS:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: pdns-server
+      stringData:
+        PDNS_MYSQL_PASSWORD: "{{ PDNS_MYSQL_PASSWORD }}"
+        PDNS_API_KEY: "{{ PDNS_API_KEY }}"
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: pdns-recursor
+      stringData:
+        PDNS_RECURSOR_API_KEY: "{{ PDNS_RECURSOR_API_KEY }}"
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: powerdns
+      spec:
+        hostNetwork: true
+        securityContext:
+          capabilities:
+            add: ["NET_BIND_SERVICE", "CHOWN"]
+        containers:
+          - name: server
+            image: docker.io/nixknight/powerdns:latest
+            command: [ "/usr/local/bin/pdns.sh" ]
+            args: [ "--pdns" ]
+            envFrom:
+              - configMapRef: { name: pdns-server }
+              - secretRef: { name: pdns-server }
+            securityContext:
+              capabilities:
+                add: ["NET_BIND_SERVICE", "CHOWN"]
+          - name: recursor
+            image: docker.io/nixknight/powerdns:latest
+            command: [ "/usr/local/bin/pdns.sh" ]
+            args: [ "--recursor" ]
+            envFrom:
+              - configMapRef: { name: pdns-recursor }
+              - secretRef: { name: pdns-recursor }
+            securityContext:
+              capabilities:
+                add: ["NET_BIND_SERVICE", "CHOWN"]
+
 # nginx
 NGINX_CONFIG:
   KUBE_FILE: "{{ NGINX_KUBE_FILE }}"
