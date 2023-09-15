@@ -17,8 +17,8 @@ RUN set -eux; \
     curl https://repo.powerdns.com/FD380FBB-pub.asc | tee /etc/apt/keyrings/pdns-pub.asc; \
     apt-get update; \
     apt-get -y install --no-install-recommends pdns-server pdns-backend-mysql pdns-recursor; \
-    mkdir -p /etc/powerdns/template /var/run/pdns-recursor; \
-    chown -R pdns:pdns /etc/powerdns /var/run/pdns-recursor; \
+    mkdir -p /etc/powerdns/template /var/run/pdns-recursor /var/run/pdns; \
+    chown -R pdns:pdns /etc/powerdns /var/run/pdns-recursor /var/run/pdns; \
     apt-get clean all; \
     rm -rf /var/lib/apt/lists/*
 

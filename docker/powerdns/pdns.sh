@@ -17,7 +17,9 @@ function check_vars {
 
 # Function to generate PowerDNS Server configuration
 function generate_pdns_config {
-  check_vars PDNS_MYSQL_HOST PDNS_MYSQL_USERNAME PDNS_MYSQL_PASSWORD PDNS_MYSQL_DATABASE PDNS_LOCAL_PORT PDNS_API_KEY PDNS_API_ADDRESS PDNS_API_PORT
+  : ${PDNS_API_ALLOW_FROM:=127.0.0.1}
+  export PDNS_API_ALLOW_FROM
+  check_vars PDNS_MYSQL_HOST PDNS_MYSQL_USERNAME PDNS_MYSQL_PASSWORD PDNS_MYSQL_DATABASE PDNS_LOCAL_PORT PDNS_API_KEY PDNS_API_ADDRESS PDNS_API_PORT PDNS_API_ALLOW_FROM
   envsubst < /etc/powerdns/template/pdns.conf.template > /etc/powerdns/pdns.conf
 }
 
@@ -39,7 +41,7 @@ function start_pdns {
   if [[ -z "$TABLE_CHECK" ]]; then
     echo "Database not initialized. Initializing..."
     mysql -h $PDNS_MYSQL_HOST -u $PDNS_MYSQL_USERNAME -p$PDNS_MYSQL_PASSWORD -D $PDNS_MYSQL_DATABASE < /usr/share/pdns-backend-mysql/schema/schema.mysql.sql
-    if [ $? eq 0 ] ; then
+    if [ $? -eq 0 ] ; then
       echo "Database initialized successfully."
     else
       echo "Error: Database initialization Failed!"
