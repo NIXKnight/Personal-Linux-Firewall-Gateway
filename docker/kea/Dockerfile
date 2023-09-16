@@ -17,6 +17,7 @@ RUN set -eux; \
         socat \
         python3 \
         python3-pip \
+        python3-requests \
         libpq5 \
         libmariadb3 \
         libpython3.11 \
@@ -58,7 +59,7 @@ RUN set -eux; \
         --disable-rpath \
         --enable-generate-parser \
         --without-werror; \
-    make -j; \
+    make; \
     make install
 
 # Install kea_python https://github.com/invite-networks/kea_python
