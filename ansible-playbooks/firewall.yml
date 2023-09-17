@@ -61,6 +61,16 @@
       when: RUN_POWERDNS is defined and RUN_POWERDNS
     - role: pdns_manager
       when: RUN_POWERDNS is defined and RUN_POWERDNS
+    # kea
+    - role: podman
+      PODMAN_VOLUMES: "{{ KEA_CONFIG.VOLUMES }}"
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ KEA_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_SECRET_MANIFESTS: "{{ KEA_CONFIG.SECRETS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ KEA_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ KEA_CONFIG.KUBE_FILE }}"
+      when: RUN_KEA is defined and RUN_KEA
+    - role: kea_hosts_manager
+      when: RUN_KEA is defined and RUN_KEA
     # nginx
     - role: podman
       PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ NGINX_CONFIG.CONFIGMAPS }}"

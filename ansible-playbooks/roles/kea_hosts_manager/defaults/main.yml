@@ -1,0 +1,12 @@
+---
+# defaults file for kea_hosts_manager
+KEA_API_URL: ""
+KEA_CTRL_AGENT_USERNAME: ""
+KEA_CTRL_AGENT_PASSWORD: ""
+KEA_HOST_RESERVATIONS:
+  - subnet_id: 1
+    reservations:
+      - { hostname: "", hw-address: "", ip-address: "" }
+  - subnet_id: 2
+    reservations:
+      - { hostname: "", hw-address: "", ip-address: "" }

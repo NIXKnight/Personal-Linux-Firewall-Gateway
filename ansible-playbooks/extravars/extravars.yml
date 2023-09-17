@@ -87,3 +87,70 @@ MYSQL_DATABASES: "{{ MARIADB_DATABASES }}"
 MYSQL_LOGIN_ENDPOINT: 127.0.0.1
 MYSQL_LOGIN_USERNAME: "root"
 MYSQL_LOGIN_PASSWORD: "{{ MARIADB_ROOT_PASSWORD }}"
+
+# kea variables
+KEA_MYSQL_HOST: 127.0.0.1
+KEA_MYSQL_DATABASE: "kea"
+KEA_MYSQL_USERNAME: "{{ KEA_MYSQL_DATABASE }}"
+KEA_SERVER_CONFIG:
+  Dhcp4:
+    multi-threading:
+      enable-multi-threading: false
+    interfaces-config:
+      interfaces:
+        - "{{ FIREWALL_LAN_INTERFACE }}"
+    control-socket:
+      socket-type: unix
+      socket-name: "/usr/local/var/run/kea/kea-dhcp4-server/kea4-ctrl-socket"
+    hooks-libraries:
+      - library: "/usr/local/lib/kea/hooks/libkea_python.so"
+        parameters:
+          libpython: libpython3.11.so.1
+          module: "/usr/local/lib/kea/keahook.py"
+    host-reservation-identifiers:
+      - circuit-id
+      - hw-address
+      - duid
+      - client-id
+    lease-database:
+      type: memfile
+      persist: false
+    hosts-database:
+      type: mysql
+      name: "{{ KEA_MYSQL_DATABASE }}"
+      user: "{{ KEA_MYSQL_USERNAME }}"
+      password: "{{ KEA_MYSQL_PASSWORD }}"
+      host: "{{ KEA_MYSQL_HOST }}"
+      port: 3306
+    subnet4:
+      - id: 1
+        subnet: "{{ KEA_SUBNET }}"
+        pools:
+          - pool: "{{ KEA_SUBNET_POOL }}"
+        option-data:
+          - name: routers
+            data: "{{ KEA_SUBNET_ROUTER }}"
+          - name: domain-name-servers
+            data: "{{ KEA_SUBNET_NAMESERVER }}"
+KEA_CTRL_AGENT_CONFIG:
+  Control-agent:
+    http-host: 127.0.0.1
+    http-port: 8083
+    authentication:
+      type: basic
+      realm: kea-control-agent
+      clients:
+        - user: "{{ KEA_BASIC_AUTH_USERNAME }}"
+          password: "{{ KEA_BASIC_AUTH_PASSWORD }}"
+    control-sockets:
+      dhcp4:
+        socket-type: unix
+        socket-name: "/usr/local/var/run/kea/kea-dhcp4-server/kea4-ctrl-socket"
+    loggers:
+      - name: kea-ctrl-agent
+        output_options:
+          - output: stdout
+            pattern: "%-5p %m\n"
+        severity: INFO
+        debuglevel: 0
+KEA_API_URL: "http://{{ KEA_CTRL_AGENT_CONFIG['Control-agent']['http-host'] }}:{{ KEA_CTRL_AGENT_CONFIG['Control-agent']['http-port'] }}"

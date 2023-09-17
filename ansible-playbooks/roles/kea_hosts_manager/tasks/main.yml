@@ -1,0 +1,68 @@
+---
+# tasks file for kea_hosts_manager
+- name: Get Existing Host Reservations
+  uri:
+    url: "{{ KEA_API_URL }}"
+    method: POST
+    url_username: "{{ KEA_CTRL_AGENT_USERNAME }}"
+    url_password: "{{ KEA_CTRL_AGENT_PASSWORD }}"
+    headers:
+      Content-Type: "application/json"
+    body: |
+      {
+        "command": "reservation-get-all",
+        "service": [ "dhcp4" ],
+        "arguments": {
+          "subnet-id": {{ item.subnet_id }}
+        }
+      }
+    body_format: json
+    return_content: yes
+  register: existing_host_reservations
+  with_items: "{{ KEA_HOST_RESERVATIONS }}"
+
+- name: Add or Update Host Reservations
+  uri:
+    url: "{{ KEA_API_URL }}"
+    method: POST
+    url_username: "{{ KEA_CTRL_AGENT_USERNAME }}"
+    url_password: "{{ KEA_CTRL_AGENT_PASSWORD }}"
+    body_format: json
+    body: "{{ add_or_update_payload }}"
+  vars:
+    add_or_update_payload: >
+      {% set hw_address_to_check = item.1['hw-address']|lower %}
+      {% set current_subnet_id = item.0.subnet_id %}
+      {% set existing_macs = existing_host_reservations.results|selectattr('item.subnet_id', 'equalto', current_subnet_id)|map(attribute='json')|first|map(attribute='arguments.hosts')|first|map(attribute='hw-address')|list %}
+      {% if hw_address_to_check in existing_macs %}
+      {
+        "command": "reservation-update",
+        "service": ["dhcp4"],
+        "arguments": {
+          "reservation": {
+            "subnet-id": {{ current_subnet_id }},
+            "identifier-type": "hw-address",
+            "hw-address": "{{ hw_address_to_check }}",
+            "ip-address": "{{ item.1['ip-address'] }}",
+            "hostname": "{{ item.1.hostname }}"
+          }
+        }
+      }
+      {% else %}
+      {
+        "command": "reservation-add",
+        "service": ["dhcp4"],
+        "arguments": {
+          "reservation": {
+            "subnet-id": {{ current_subnet_id }},
+            "identifier-type": "hw-address",
+            "hw-address": "{{ hw_address_to_check }}",
+            "ip-address": "{{ item.1['ip-address'] }}",
+            "hostname": "{{ item.1.hostname }}"
+          }
+        }
+      }
+      {% endif %}
+  with_subelements:
+    - "{{ KEA_HOST_RESERVATIONS }}"
+    - reservations

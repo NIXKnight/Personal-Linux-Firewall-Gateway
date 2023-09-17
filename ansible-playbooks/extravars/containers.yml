@@ -259,6 +259,113 @@ POWERDNS_CONFIG:
               capabilities:
                 add: ["NET_BIND_SERVICE", "CHOWN"]
 
+# kea
+KEA_CONFIG:
+  KUBE_FILE: "{{ KEA_KUBE_FILE }}"
+  VOLUMES: [ "kea_dhcp_server" ]
+  CONFIGMAPS:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kea-server-env
+      data:
+        KEA_LOCKFILE_DIR: "/usr/local/var/run/kea/kea-dhcp4-server"
+        PDNS_API_PROTOCOL: "http"
+        PDNS_DOMAIN: "{{ PDNS_RECURSOR_LOCAL_ZONE }}"
+        PDNS_API_HOST: 127.0.0.1
+        PDNS_API_PORT: 8081
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kea-ctrl-agent-env
+      data:
+        KEA_LOCKFILE_DIR: "/usr/local/var/run/kea/kea-ctrl-agent"
+  SECRETS:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: kea-server-env
+      stringData:
+        PDNS_API_KEY: "{{ PDNS_API_KEY }}"
+        KEA_MYSQL_HOST: "{{ KEA_MYSQL_HOST }}"
+        KEA_MYSQL_DATABASE: "{{ KEA_MYSQL_DATABASE }}"
+        KEA_MYSQL_USERNAME: "{{ KEA_MYSQL_USERNAME }}"
+        KEA_MYSQL_PASSWORD: "{{ KEA_MYSQL_PASSWORD }}"
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: kea-config
+      stringData:
+        kea-dhcp.json: |
+          {{ KEA_SERVER_CONFIG | to_json }}
+        kea-ctrl-agent.json: |
+          {{ KEA_CTRL_AGENT_CONFIG | to_json }}
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kea
+      spec:
+        hostNetwork: true
+        securityContext:
+          capabilities:
+            add: ["NET_RAW", "NET_BIND_SERVICE"]
+        volumes:
+          - name: kea-config
+            secret:
+              secretName: kea-config
+          - name: kea-dhcp-server
+            persistentVolumeClaim:
+              claimName: kea_dhcp_server
+        initContainers:
+          - name: db-init
+            image: docker.io/nixknight/kea:latest
+            command: [ "/usr/local/bin/init.sh" ]
+            envFrom:
+              - configMapRef: { name: kea-server-env }
+              - secretRef: { name: kea-server-env }
+            volumeMounts:
+              - mountPath: /usr/local/etc/kea/kea-dhcp.json
+                subPath: kea-dhcp.json
+                name: kea-config
+        containers:
+          - name: dhcp-server
+            image: docker.io/nixknight/kea:latest
+            command: [ "/usr/local/sbin/kea-dhcp4" ]
+            args: [ "-c", "/usr/local/etc/kea/kea-dhcp.json" ]
+            envFrom:
+              - configMapRef: { name: kea-server-env }
+              - secretRef: { name: kea-server-env }
+            securityContext:
+              privileged: true
+              runAsUser: 101
+              runAsGroup: 101
+              capabilities:
+                add: ["NET_RAW", "NET_BIND_SERVICE"]
+            volumeMounts:
+              - mountPath: /usr/local/etc/kea/kea-dhcp.json
+                subPath: kea-dhcp.json
+                name: kea-config
+              - mountPath: /usr/local/var/run/kea/kea-dhcp4-server
+                name: kea-dhcp-server
+          - name: ctrl-agent
+            image: docker.io/nixknight/kea:latest
+            command: [ "/usr/local/sbin/kea-ctrl-agent" ]
+            args: [ "-c", "/usr/local/etc/kea/kea-ctrl-agent.json" ]
+            envFrom:
+              - configMapRef: { name: kea-ctrl-agent-env }
+            securityContext:
+              runAsUser: 101
+              runAsGroup: 101
+              capabilities:
+                add: ["NET_BIND_SERVICE"]
+            volumeMounts:
+              - mountPath: /usr/local/etc/kea/kea-ctrl-agent.json
+                subPath: kea-ctrl-agent.json
+                name: kea-config
+              - mountPath: /usr/local/var/run/kea/kea-dhcp4-server
+                name: kea-dhcp-server
+
 # nginx
 NGINX_CONFIG:
   KUBE_FILE: "{{ NGINX_KUBE_FILE }}"
