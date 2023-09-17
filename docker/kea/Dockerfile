@@ -74,6 +74,7 @@ FROM base as system
 
 COPY --from=builder /usr/local /usr/local
 COPY keahook.py /usr/local/lib/kea/keahook.py
+COPY init.sh /usr/local/bin/init.sh
 
 RUN set -eux; \
     mkdir -v /usr/local/var/run/kea/kea-dhcp4-server /usr/local/var/run/kea/kea-ctrl-agent; \

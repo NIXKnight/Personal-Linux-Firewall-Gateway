@@ -4,6 +4,7 @@ on:
     branches:
       - main
     paths:
+      - "docker/kea/init.sh"
       - "docker/kea/Dockerfile"
       - "docker/kea/keahook.py"
       - .github/workflows/kea-container-image-build.yml
