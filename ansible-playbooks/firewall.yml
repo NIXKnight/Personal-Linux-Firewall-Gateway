@@ -71,6 +71,13 @@
       when: RUN_KEA is defined and RUN_KEA
     - role: kea_hosts_manager
       when: RUN_KEA is defined and RUN_KEA
+    # omada
+    - role: podman
+      PODMAN_VOLUMES: "{{ OMADA_CONFIG.VOLUMES }}"
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ OMADA_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ OMADA_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ OMADA_CONFIG.KUBE_FILE }}"
+      when: RUN_OMADA is defined and RUN_OMADA
     # nginx
     - role: podman
       PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ NGINX_CONFIG.CONFIGMAPS }}"

@@ -154,3 +154,7 @@ KEA_CTRL_AGENT_CONFIG:
         severity: INFO
         debuglevel: 0
 KEA_API_URL: "http://{{ KEA_CTRL_AGENT_CONFIG['Control-agent']['http-host'] }}:{{ KEA_CTRL_AGENT_CONFIG['Control-agent']['http-port'] }}"
+
+# omada variables
+OMADA_WEB_HOST: 127.0.0.1
+OMADA_WEB_PORT: "{{ OMADA_CONFIG.CONFIGMAPS[0].data.MANAGE_HTTPS_PORT }}"

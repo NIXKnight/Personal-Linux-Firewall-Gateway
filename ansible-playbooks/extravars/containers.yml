@@ -366,6 +366,71 @@ KEA_CONFIG:
               - mountPath: /usr/local/var/run/kea/kea-dhcp4-server
                 name: kea-dhcp-server
 
+# omada
+OMADA_CONFIG:
+  KUBE_FILE: "{{ OMADA_KUBE_FILE }}"
+  VOLUMES: [ "omada_data", "omada_logs" ]
+  CONFIGMAPS:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: omada
+      data:
+        MANAGE_HTTP_PORT: 8089
+        MANAGE_HTTPS_PORT: 8043
+        PORTAL_HTTP_PORT: 8089
+        PORTAL_HTTPS_PORT: 8843
+        PORT_APP_DISCOVERY: 27001
+        PORT_ADOPT_V1: 29812
+        PORT_UPGRADE_V1: 29813
+        PORT_MANAGER_V1: 29811
+        PORT_MANAGER_V2: 29814
+        PORT_DISCOVERY: 29810
+        PORT_TRANSFER_V2: 29815
+        PORT_RTTY: 29816
+        SHOW_SERVER_LOGS: true
+        SHOW_MONGODB_LOGS: false
+        TZ: Asia/Karachi
+  PODS:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: omada
+      spec:
+        hostNetwork: true
+        terminationGracePeriodSeconds: 120
+        volumes:
+          - name: omada_data
+            persistentVolumeClaim:
+              claimName: omada_data
+          - name: omada_logs
+            persistentVolumeClaim:
+              claimName: omada_logs
+        containers:
+          - name: controller
+            image: docker.io/mbentley/omada-controller:5.12
+            args:
+              - "/usr/bin/java"
+              - "-Djava.net.preferIPv4Stack=true"
+              - "-server"
+              - "-Xms128m"
+              - "-Xmx2048m"
+              - "-XX:MaxHeapFreeRatio=60"
+              - "-XX:MinHeapFreeRatio=30"
+              - "-XX:+HeapDumpOnOutOfMemoryError"
+              - "-XX:HeapDumpPath=/opt/tplink/EAPController/logs/java_heapdump.hprof"
+              - "-Djava.awt.headless=true"
+              - "-cp"
+              - "/opt/tplink/EAPController/lib/*::/opt/tplink/EAPController/properties:"
+              - "com.tplink.smb.omada.starter.OmadaLinuxMain"
+            envFrom:
+              - configMapRef: { name: omada }
+            volumeMounts:
+              - mountPath: /opt/tplink/EAPController/data
+                name: omada_data
+              - mountPath: /opt/tplink/EAPController/logs
+                name: omada_logs
+
 # nginx
 NGINX_CONFIG:
   KUBE_FILE: "{{ NGINX_KUBE_FILE }}"
@@ -425,6 +490,41 @@ NGINX_CONFIG:
               proxy_set_header Connection $connection_upgrade;
               proxy_set_header Host $http_host;
               proxy_pass http://grafana;
+            }
+          }
+        omada.conf: |
+          server {
+            listen 80;
+            server_name {{ OMADA_DOMAIN }};
+
+            return 301 https://{{ OMADA_DOMAIN }};
+          }
+
+          server {
+            listen 443 ssl;
+            server_name {{ OMADA_DOMAIN }};
+
+            ignore_invalid_headers off;
+            client_max_body_size 0;
+
+            set $backend https://127.0.0.1:8043;
+
+            location / {
+                expires                 off;
+                proxy_http_version      1.1;
+                proxy_set_header        Host $http_host:8043;
+                proxy_pass              $backend;
+
+                proxy_redirect ~https://(.+):8043/(.+)/login$ https://$http_host/$2/login;
+                proxy_buffering off;
+
+                proxy_set_header        X-Real-IP                 $remote_addr;
+                proxy_set_header        X-Forwarded-For           $proxy_add_x_forwarded_for;
+                proxy_set_header        Cookie                    $http_cookie;
+                proxy_set_header	      X-Forwarded-Proto         $scheme;
+
+                proxy_set_header        Upgrade                   $http_upgrade;
+                proxy_set_header        Connection                "upgrade";
             }
           }
   PODS:
