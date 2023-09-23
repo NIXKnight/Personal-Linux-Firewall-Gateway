@@ -3,6 +3,8 @@ import kea
 import json
 import requests
 
+# This hook was improved by ChatGPT and later some errors were resolved.
+
 powerdns_domain = environ["PDNS_DOMAIN"]
 powerdns_api_key = environ["PDNS_API_KEY"]
 powerdns_api_host = environ["PDNS_API_HOST"]

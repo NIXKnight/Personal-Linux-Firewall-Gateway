@@ -1,6 +1,34 @@
 ---
 # tasks file for kea_hosts_manager
+- name: Copy reservation-processor.sh Shell Script
+  copy:
+    src: "files/reservation-processor.sh"
+    dest: "/root/reservation-processor.sh"
+    mode: 0755
+
 - name: Get Existing Host Reservations
+  shell: "/root/reservation-processor.sh --get-all-reservations --subnet-id {{ item }} --kea-ctrl-agent-username {{ KEA_CTRL_AGENT_USERNAME }} --kea-ctrl-agent-password {{ KEA_CTRL_AGENT_PASSWORD }}"
+  args:
+    executable: "/bin/bash"
+  register: existing_host_reservations
+  with_items: "{{ KEA_HOST_RESERVATIONS | map(attribute='subnet_id') | list }}"
+
+- name: Parse existing_host_reservations
+  set_fact:
+    existing_host_reservations_parsed: "{{ existing_host_reservations.results | map(attribute='stdout') | map('from_json') | list | flatten }}"
+
+- name: Get a List of Reservations Missing from KEA_HOST_RESERVATIONS
+  shell: "/root/reservation-processor.sh --list-deletable-reservations --source-of-truth '{{ item }}' --kea-ctrl-agent-username {{ KEA_CTRL_AGENT_USERNAME }} --kea-ctrl-agent-password {{ KEA_CTRL_AGENT_PASSWORD }}"
+  args:
+    executable: "/bin/bash"
+  register: missing_reservations
+  with_items: "{{ KEA_HOST_RESERVATIONS | to_json }}"
+
+- name: Parse missing_reservations_parsed
+  set_fact:
+    missing_reservations_parsed: "{{ missing_reservations.results | map(attribute='stdout') | map('from_json') | list | flatten }}"
+
+- name: Remove Missing Reservations
   uri:
     url: "{{ KEA_API_URL }}"
     method: POST
@@ -10,16 +38,18 @@
       Content-Type: "application/json"
     body: |
       {
-        "command": "reservation-get-all",
-        "service": [ "dhcp4" ],
+        "command": "reservation-del",
+        "service": ["dhcp4"],
         "arguments": {
-          "subnet-id": {{ item.subnet_id }}
+          "identifier-type": "hw-address",
+          "subnet-id": {{ item['subnet-id'] }},
+          "identifier": "{{ item['hw-address'] }}"
         }
       }
     body_format: json
     return_content: yes
-  register: existing_host_reservations
-  with_items: "{{ KEA_HOST_RESERVATIONS }}"
+  with_items: "{{ missing_reservations_parsed }}"
+  when: missing_reservations_parsed is defined and missing_reservations_parsed | length > 0
 
 - name: Add or Update Host Reservations
   uri:
@@ -33,7 +63,7 @@
     add_or_update_payload: >
       {% set hw_address_to_check = item.1['hw-address']|lower %}
       {% set current_subnet_id = item.0.subnet_id %}
-      {% set existing_macs = existing_host_reservations.results|selectattr('item.subnet_id', 'equalto', current_subnet_id)|map(attribute='json')|first|map(attribute='arguments.hosts')|first|map(attribute='hw-address')|list %}
+      {% set existing_macs = existing_host_reservations_parsed|selectattr('subnet-id', 'equalto', current_subnet_id)|map(attribute='hw-address')|map('lower')|list %}
       {% if hw_address_to_check in existing_macs %}
       {
         "command": "reservation-update",
@@ -66,3 +96,8 @@
   with_subelements:
     - "{{ KEA_HOST_RESERVATIONS }}"
     - reservations
+
+- name: Remove reservation-processor.sh Shell Script
+  file:
+    path: /root/reservation-processor.sh
+    state: absent

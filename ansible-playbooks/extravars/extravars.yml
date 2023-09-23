@@ -135,7 +135,7 @@ KEA_SERVER_CONFIG:
 KEA_CTRL_AGENT_CONFIG:
   Control-agent:
     http-host: 127.0.0.1
-    http-port: 8083
+    http-port: 8084
     authentication:
       type: basic
       realm: kea-control-agent
