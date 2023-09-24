@@ -1,31 +1,42 @@
 ---
 # tasks file for podman
-- name: Check if {{ PODMAN_KUBE_FILE }} Exists
-  stat:
-    path: "{{ PODMAN_KUBE_FILE }}"
-  register: kube_file_stat
-
 - name: Setup Volume(s)
   containers.podman.podman_volume:
     name: "{{ item }}"
     state: "present"
   with_items: "{{ PODMAN_VOLUMES }}"
 
+- name: Create Directory for Podman Containers Configuration
+  ansible.builtin.file:
+    path: "{{ PODMAN_CONFIG_PATH }}"
+    state: directory
+    mode: 0755
+
 - name: Generate Pod Template
   ansible.builtin.template:
     src: "templates/pod.yaml.j2"
-    dest: "{{ PODMAN_KUBE_FILE }}"
-  register: kube_file_generate
+    dest: "{{ PODMAN_CONFIG_PATH }}/{{ PODMAN_KUBE_FILE }}"
+  register: kube_file
 
-- name: Destroy Existing Pod(s)
-  containers.podman.podman_play:
-    kube_file: "{{ PODMAN_KUBE_FILE }}"
-    state: "absent"
-  register: kube_pods_state
-  when: kube_file_generate.changed
+- name: Check if Service {{ PODMAN_SERVICE_NAME }} Exists
+  stat:
+    path: "/etc/systemd/system/{{ PODMAN_SERVICE_NAME }}.service"
+  register: check_service_file
 
-- name: Setup Pod(s)
-  containers.podman.podman_play:
-    kube_file: "{{ PODMAN_KUBE_FILE }}"
-    state: "started"
-  when: kube_pods_state.changed or kube_file_generate.changed
+- name: Generate Systemd Service for {{ PODMAN_SERVICE_NAME }}
+  ansible.builtin.template:
+    src: "templates/etc/systemd/system/pod.service.j2"
+    dest: "/etc/systemd/system/{{ PODMAN_SERVICE_NAME }}.service"
+    mode: 0600
+  register: service_file
+
+- name: Set Service State Action
+  set_fact:
+    service_action: "{{ 'restarted' if (check_service_file.stat.exists and kube_file.changed) or (check_service_file.stat.exists and service_file.changed) else 'started' if not check_service_file.stat.exists }}"
+
+- name: Start/Restart {{ PODMAN_SERVICE_NAME }}
+  ansible.builtin.systemd:
+    name: "{{ PODMAN_SERVICE_NAME }}"
+    state: "{{ service_action }}"
+    daemon_reload: true
+  when: service_file.changed or kube_file.changed

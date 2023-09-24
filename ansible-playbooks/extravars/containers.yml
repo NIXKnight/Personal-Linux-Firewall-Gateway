@@ -1,71 +1,74 @@
 # ntopng
 NTOP_CONFIG:
-  KUBE_FILE: "{{ NTOP_KUBE_FILE }}"
-  VOLUMES: [ "ntopng" ]
+  DEPENDENCIES:
+    - "{{ REDIS_SERVICE_NAME }}"
+    - "{{ INFLUXDB_SERVICE_NAME }}"
+  KUBE_FILE: "{{ NTOPNG_SERVICE_NAME }}.yaml"
+  VOLUMES: [ "{{ NTOPNG_SERVICE_NAME }}" ]
   CONFIGMAPS:
     - apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: ntopng
+        name: "{{ NTOPNG_SERVICE_NAME }}"
       data:
         config: "--community --dns-mode 1 --interface {{ FIREWALL_WAN_INTERFACE }} --interface {{ FIREWALL_LAN_INTERFACE }}"
   PODS:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: ntopng
+        name: "{{ NTOPNG_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         volumes:
-          - name: ntopng
+          - name: "{{ NTOPNG_SERVICE_NAME }}"
             persistentVolumeClaim:
-              claimName: ntopng
+              claimName: "{{ NTOPNG_SERVICE_NAME }}"
         containers:
-          - name: ntopng
+          - name: server
             image: docker.io/nixknight/ntopng:latest
             env:
               - name: NTOP_CONFIG
                 valueFrom:
-                  configMapKeyRef: { name: ntopng, key: config }
+                  configMapKeyRef: { name: "{{ NTOPNG_SERVICE_NAME }}", key: config }
             volumeMounts:
               - mountPath: "/var/lib/ntopng"
-                name: ntopng
+                name: "{{ NTOPNG_SERVICE_NAME }}"
             securityContext:
               privileged: true
               allowPrivilegeEscalation: true
 
 # redis
 REDIS_CONFIG:
-  KUBE_FILE: "{{ REDIS_KUBE_FILE }}"
-  VOLUMES: [ "redis" ]
+  KUBE_FILE: "{{ REDIS_SERVICE_NAME }}.yaml"
+  VOLUMES: [ "{{ REDIS_SERVICE_NAME }}" ]
   PODS:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: redis
+        name: "{{ REDIS_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         volumes:
-          - name: redis
+          - name: "{{ REDIS_SERVICE_NAME }}"
             persistentVolumeClaim:
-              claimName: redis
+              claimName: "{{ REDIS_SERVICE_NAME }}"
         containers:
-          - name: redis
+          - name: server
             image: docker.io/library/redis:7.0.11-alpine3.18
             volumeMounts:
               - mountPath: "/data"
-                name: redis
+                name: "{{ REDIS_SERVICE_NAME }}"
 
 # influxdb 1.x because NTOPNG people haven't made any decisions on weather to use InfluxDB 2.x or not since the past 3 years.
 # https://github.com/ntop/ntopng/issues/3764
 INFLUXDB_CONFIG:
-  KUBE_FILE: "{{ INFLUXDB_KUBE_FILE }}"
-  VOLUMES: [ "influxdb" ]
+  KUBE_FILE: "{{ INFLUXDB_SERVICE_NAME }}.yaml"
+  VOLUMES: [ "{{ INFLUXDB_SERVICE_NAME }}" ]
   CONFIGMAPS:
     - apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: influxdb
+        name: "{{ INFLUXDB_SERVICE_NAME }}"
       data:
         INFLUXDB_DB: "dummy"
         INFLUXDB_USER: "dummy"
@@ -79,7 +82,7 @@ INFLUXDB_CONFIG:
     - apiVersion: v1
       kind: Secret
       metadata:
-        name: influxdb
+        name: "{{ INFLUXDB_SERVICE_NAME }}"
       stringData:
         INFLUXDB_ADMIN_USER: "{{ INFLUXDB_ADMIN_USER }}"
         INFLUXDB_ADMIN_PASSWORD: "{{ INFLUXDB_ADMIN_PASSWORD }}"
@@ -87,32 +90,34 @@ INFLUXDB_CONFIG:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: influxdb
+        name: "{{ INFLUXDB_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         volumes:
-          - name: influxdb
+          - name: "{{ INFLUXDB_SERVICE_NAME }}"
             persistentVolumeClaim:
-              claimName: influxdb
+              claimName: "{{ INFLUXDB_SERVICE_NAME }}"
         containers:
-          - name: influxdb
+          - name: "server"
             image: docker.io/library/influxdb:1.8.10
             envFrom:
-              - configMapRef: { name: influxdb }
-              - secretRef: { name: influxdb }
+              - configMapRef: { name: "{{ INFLUXDB_SERVICE_NAME }}" }
+              - secretRef: { name: "{{ INFLUXDB_SERVICE_NAME }}" }
             volumeMounts:
               - mountPath: "/var/lib/influxdb"
-                name: influxdb
+                name: "{{ INFLUXDB_SERVICE_NAME }}"
 
 # grafana
 GRAFANA_CONFIG:
-  KUBE_FILE: "{{ GRAFANA_KUBE_FILE }}"
-  VOLUMES: [ "grafana" ]
+  DEPENDENCIES:
+    - "{{ INFLUXDB_SERVICE_NAME }}"
+  KUBE_FILE: "{{ GRAFANA_SERVICE_NAME }}.yaml"
+  VOLUMES: [ "{{ GRAFANA_SERVICE_NAME }}" ]
   CONFIGMAPS:
     - apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: grafana
+        name: "{{ GRAFANA_SERVICE_NAME }}"
       data:
         TZ: "Asia/Karachi"
         GF_DEFAULT_INSTANCE_NAME: "{{ GRAFANA_INSTANCE_NAME }}"
@@ -129,7 +134,7 @@ GRAFANA_CONFIG:
     - apiVersion: v1
       kind: Secret
       metadata:
-        name: grafana
+        name: "{{ GRAFANA_SERVICE_NAME }}"
       stringData:
         GF_SECURITY_ADMIN_USER: "{{ GRAFANA_ADMIN_USER }}"
         GF_SECURITY_ADMIN_PASSWORD: "{{ GRAFANA_ADMIN_PASSWORD }}"
@@ -140,45 +145,45 @@ GRAFANA_CONFIG:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: grafana
+        name: "{{ GRAFANA_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         volumes:
-          - name: grafana
+          - name: "{{ GRAFANA_SERVICE_NAME }}"
             persistentVolumeClaim:
-              claimName: grafana
+              claimName: "{{ GRAFANA_SERVICE_NAME }}"
         containers:
-          - name: grafana
+          - name: server
             image: docker.io/grafana/grafana-oss:10.1.1
             envFrom:
-              - configMapRef: { name: grafana }
-              - secretRef: { name: grafana }
+              - configMapRef: { name: "{{ GRAFANA_SERVICE_NAME }}" }
+              - secretRef: { name: "{{ GRAFANA_SERVICE_NAME }}" }
             volumeMounts:
               - mountPath: "/var/lib/grafana"
-                name: grafana
+                name: "{{ GRAFANA_SERVICE_NAME }}"
 
 # mariadb
 MARIADB_CONFIG:
-  KUBE_FILE: "{{ MARIADB_KUBE_FILE }}"
-  VOLUMES: [ "mariadb" ]
+  KUBE_FILE: "{{ MARIADB_SERVICE_NAME }}.yaml"
+  VOLUMES: [ "{{ MARIADB_SERVICE_NAME }}" ]
   SECRETS:
     - apiVersion: v1
       kind: Secret
       metadata:
-        name: mariadb
+        name: "{{ MARIADB_SERVICE_NAME }}"
       stringData:
         MYSQL_ROOT_PASSWORD: "{{ MARIADB_ROOT_PASSWORD }}"
   PODS:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: mariadb
+        name: "{{ MARIADB_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         volumes:
-          - name: mariadb
+          - name: "{{ MARIADB_SERVICE_NAME }}"
             persistentVolumeClaim:
-              claimName: mariadb
+              claimName: "{{ MARIADB_SERVICE_NAME }}"
         containers:
           - name: server
             image: docker.io/library/mariadb:10.11.5-jammy
@@ -186,11 +191,13 @@ MARIADB_CONFIG:
               - secretRef: { name: mariadb }
             volumeMounts:
               - mountPath: "/var/lib/mysql"
-                name: mariadb
+                name: "{{ MARIADB_SERVICE_NAME }}"
 
 # powerdns
 POWERDNS_CONFIG:
-  KUBE_FILE: "{{ POWERDNS_KUBE_FILE }}"
+  DEPENDENCIES:
+    - "{{ MARIADB_SERVICE_NAME }}"
+  KUBE_FILE: "{{ POWERDNS_SERVICE_NAME }}.yaml"
   CONFIGMAPS:
     - apiVersion: v1
       kind: ConfigMap
@@ -231,7 +238,7 @@ POWERDNS_CONFIG:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: powerdns
+        name: "{{ POWERDNS_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         securityContext:
@@ -261,7 +268,10 @@ POWERDNS_CONFIG:
 
 # kea
 KEA_CONFIG:
-  KUBE_FILE: "{{ KEA_KUBE_FILE }}"
+  DEPENDENCIES:
+    - "{{ MARIADB_SERVICE_NAME }}"
+    - "{{ POWERDNS_SERVICE_NAME }}"
+  KUBE_FILE: "{{ KEA_SERVICE_NAME }}.yaml"
   VOLUMES: [ "kea_dhcp_server" ]
   CONFIGMAPS:
     - apiVersion: v1
@@ -304,7 +314,7 @@ KEA_CONFIG:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: kea
+        name: "{{ KEA_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         securityContext:
@@ -368,13 +378,13 @@ KEA_CONFIG:
 
 # omada
 OMADA_CONFIG:
-  KUBE_FILE: "{{ OMADA_KUBE_FILE }}"
+  KUBE_FILE: "{{ OMADA_SERVICE_NAME }}.yaml"
   VOLUMES: [ "omada_data", "omada_logs" ]
   CONFIGMAPS:
     - apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: omada
+        name: "{{ OMADA_SERVICE_NAME }}"
       data:
         MANAGE_HTTP_PORT: 8089
         MANAGE_HTTPS_PORT: 8043
@@ -395,7 +405,7 @@ OMADA_CONFIG:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: omada
+        name: "{{ OMADA_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         terminationGracePeriodSeconds: 120
@@ -433,12 +443,15 @@ OMADA_CONFIG:
 
 # nginx
 NGINX_CONFIG:
-  KUBE_FILE: "{{ NGINX_KUBE_FILE }}"
+  DEPENDENCIES:
+    - "{{ GRAFANA_SERVICE_NAME }}"
+    - "{{ OMADA_SERVICE_NAME }}"
+  KUBE_FILE: "{{ NGINX_SERVICE_NAME }}.yaml"
   CONFIGMAPS:
     - apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: nginx
+        name: "{{ NGINX_SERVICE_NAME }}"
       data:
         nginx_config.conf: |
           # NGINX HTTP Core Module Parameters
@@ -531,22 +544,22 @@ NGINX_CONFIG:
     - apiVersion: v1
       kind: Pod
       metadata:
-        name: nginx
+        name: "{{ NGINX_SERVICE_NAME }}"
       spec:
         hostNetwork: true
         volumes:
-          - name: nginx
+          - name: "{{ NGINX_SERVICE_NAME }}"
             ConfigMap:
-              name: nginx
+              name: "{{ NGINX_SERVICE_NAME }}"
           - name: certs
             hostPath:
               path: /etc/LetsEncrypt
               type: Directory
         containers:
-          - name: nginx
+          - name: web-server
             image: docker.io/library/nginx:1.25.2-bookworm
             volumeMounts:
               - mountPath: "/etc/nginx/conf.d"
-                name: nginx
+                name: "{{ NGINX_SERVICE_NAME }}"
               - mountPath: "/etc/LetsEncrypt"
                 name: certs

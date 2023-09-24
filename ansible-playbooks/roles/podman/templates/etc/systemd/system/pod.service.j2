@@ -1,0 +1,13 @@
+[Unit]
+Description=Start/Stop Podman Service {{ PODMAN_SERVICE_NAME }}
+Wants=network-online.target netfilter-persistent.service {% if PODMAN_SERVICE_DEPENDENCIES is defined and PODMAN_SERVICE_DEPENDENCIES | length > 0 %}{% for DEPENDENCY in PODMAN_SERVICE_DEPENDENCIES %} {{ DEPENDENCY }}.service{% if not loop.last %} {% endif %}{% endfor %}{% endif %}
+After=network-online.target netfilter-persistent.service {% if PODMAN_SERVICE_DEPENDENCIES is defined and PODMAN_SERVICE_DEPENDENCIES | length > 0 %}{% for DEPENDENCY in PODMAN_SERVICE_DEPENDENCIES %} {{ DEPENDENCY }}.service{% if not loop.last %} {% endif %}{% endfor %}{% endif %}
+
+[Service]
+ExecStart=/usr/bin/podman kube play {{ PODMAN_CONFIG_PATH }}/{{ PODMAN_KUBE_FILE }}
+ExecStop=/usr/bin/podman kube down {{ PODMAN_CONFIG_PATH }}/{{ PODMAN_KUBE_FILE }}
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
