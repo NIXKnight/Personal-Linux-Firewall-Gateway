@@ -38,5 +38,6 @@
   ansible.builtin.systemd:
     name: "{{ PODMAN_SERVICE_NAME }}"
     state: "{{ service_action }}"
+    enabled: true
     daemon_reload: true
   when: service_file.changed or kube_file.changed
