@@ -12,13 +12,6 @@
       when: RUN_ACME is defined and RUN_ACME
     - role: firewall
       when: RUN_FIREWALL is defined and RUN_FIREWALL
-    # redis
-    - role: podman
-      PODMAN_SERVICE_NAME: "{{ REDIS_SERVICE_NAME }}"
-      PODMAN_VOLUMES: "{{ REDIS_CONFIG.VOLUMES }}"
-      PODMAN_KUBE_POD_MANIFESTS: "{{ REDIS_CONFIG.PODS }}"
-      PODMAN_KUBE_FILE: "{{ REDIS_CONFIG.KUBE_FILE }}"
-      when: RUN_REDIS is defined and RUN_REDIS
     # mysql
     - role: podman
       PODMAN_SERVICE_NAME: "{{ MARIADB_SERVICE_NAME }}"
@@ -40,15 +33,6 @@
       when: RUN_INFLUXDB is defined and RUN_INFLUXDB
     - role: influxdb_db_users
       when: RUN_INFLUXDB is defined and RUN_INFLUXDB
-    # ntopng
-    - role: podman
-      PODMAN_SERVICE_NAME: "{{ NTOPNG_SERVICE_NAME }}"
-      PODMAN_VOLUMES: "{{ NTOP_CONFIG.VOLUMES }}"
-      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ NTOP_CONFIG.CONFIGMAPS }}"
-      PODMAN_KUBE_POD_MANIFESTS: "{{ NTOP_CONFIG.PODS }}"
-      PODMAN_KUBE_FILE: "{{ NTOP_CONFIG.KUBE_FILE }}"
-      PODMAN_SERVICE_DEPENDENCIES: "{{ NTOP_CONFIG.DEPENDENCIES }}"
-      when: RUN_NTOPNG is defined and RUN_NTOPNG
     # grafana
     - role: podman
       PODMAN_SERVICE_NAME: "{{ GRAFANA_SERVICE_NAME }}"
@@ -90,6 +74,14 @@
       PODMAN_KUBE_POD_MANIFESTS: "{{ OMADA_CONFIG.PODS }}"
       PODMAN_KUBE_FILE: "{{ OMADA_CONFIG.KUBE_FILE }}"
       when: RUN_OMADA is defined and RUN_OMADA
+    # telegraf
+    - role: podman
+      PODMAN_SERVICE_NAME: "{{ TELEGRAF_SERVICE_NAME }}"
+      PODMAN_KUBE_CONFIGMAP_MANIFESTS: "{{ TELEGRAF_CONFIG.CONFIGMAPS }}"
+      PODMAN_KUBE_POD_MANIFESTS: "{{ TELEGRAF_CONFIG.PODS }}"
+      PODMAN_KUBE_FILE: "{{ TELEGRAF_CONFIG.KUBE_FILE }}"
+      PODMAN_SERVICE_DEPENDENCIES: "{{ TELEGRAF_CONFIG.DEPENDENCIES }}"
+      when: RUN_TELEGRAF is defined and RUN_TELEGRAF
     # nginx
     - role: podman
       PODMAN_SERVICE_NAME: "{{ NGINX_SERVICE_NAME }}"

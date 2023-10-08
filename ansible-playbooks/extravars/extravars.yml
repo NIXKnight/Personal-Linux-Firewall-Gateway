@@ -66,6 +66,7 @@ MARIADB_SERVICE_NAME: "mariadb"
 KEA_SERVICE_NAME: "kea"
 NGINX_SERVICE_NAME: "nginx"
 OMADA_SERVICE_NAME: "omada"
+TELEGRAF_SERVICE_NAME: "telegraf"
 
 # grafana variables
 GRAFANA_HTTP_ADDR: 127.0.0.1

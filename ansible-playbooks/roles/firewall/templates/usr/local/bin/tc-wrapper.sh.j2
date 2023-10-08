@@ -1,28 +1,39 @@
 #!/bin/bash
 
-function apply_tc_rules {
-# Egress shaping for WAN
-  tc qdisc replace dev {{ FIREWALL_WAN_INTERFACE }} root handle 1: cake besteffort bandwidth {{ FIREWALL_WAN_BANDWIDTH }} ethernet dual-srchost
+function flush_tc_rules {
+  # Delete existing qdiscs
+  /usr/sbin/tc qdisc del dev {{ FIREWALL_WAN_INTERFACE }} root 2> /dev/null
+  if [ $? -ne 0 ]; then
+    echo "$(date): Failed to delete qdisc on {{ FIREWALL_WAN_INTERFACE }}"
+    exit 1
+  fi
 
-  # Ingress shaping for WAN using IFB
-  modprobe ifb
-  ip link add ifb0 type ifb
-  ip link set ifb0 up
-
-  tc qdisc add dev {{ FIREWALL_WAN_INTERFACE }} handle ffff: ingress
-  tc filter add dev {{ FIREWALL_WAN_INTERFACE }} parent ffff: protocol all u32 match u32 0 0 action mirred egress redirect dev ifb0
-  tc qdisc replace dev ifb0 root cake besteffort bandwidth {{ FIREWALL_WAN_BANDWIDTH }} ethernet dual-dsthost
-
-  # Egress shaping for LAN
-  tc qdisc replace dev {{ FIREWALL_LAN_INTERFACE }} root handle 1: cake besteffort bandwidth {{ FIREWALL_LAN_BANDWIDTH }} ethernet dual-dsthost
+  /usr/sbin/tc qdisc del dev {{ FIREWALL_LAN_INTERFACE }} root 2> /dev/null
+  if [ $? -ne 0 ]; then
+    echo "$(date): Failed to delete qdisc on {{ FIREWALL_LAN_INTERFACE }}"
+    exit 1
+  fi
 }
 
-function flush_tc_rules {
-  tc qdisc del dev {{ FIREWALL_WAN_INTERFACE }} root 2>/dev/null
-  tc qdisc del dev {{ FIREWALL_WAN_INTERFACE }} ingress 2>/dev/null
-  tc qdisc del dev ifb0 root 2>/dev/null
-  tc qdisc del dev {{ FIREWALL_LAN_INTERFACE }} root 2>/dev/null
-  ip link delete ifb0 type ifb 2>/dev/null
+function apply_tc_rules {
+  flush_tc_rules
+
+  # Add new qdiscs
+  /usr/sbin/tc qdisc add dev {{ FIREWALL_WAN_INTERFACE }} handle 1: root cake besteffort bandwidth {{ WAN_UPLOAD_BANDWIDTH }} internet nat egress ack-filter dual-srchost ethernet
+  if [ $? -eq 0 ]; then
+    echo "$(date): Successfully added qdisc on {{ FIREWALL_WAN_INTERFACE }}"
+  else
+    echo "$(date): Failed to add qdisc on {{ FIREWALL_WAN_INTERFACE }}"
+    exit 1
+  fi
+
+  /usr/sbin/tc qdisc add dev {{ FIREWALL_LAN_INTERFACE }} handle 1: root cake besteffort bandwidth {{ WAN_DOWNLOAD_BANDWIDTH }} internet ingress dual-dsthost ethernet
+  if [ $? -eq 0 ]; then
+    echo "$(date): Successfully added qdisc on {{ FIREWALL_LAN_INTERFACE }}"
+  else
+    echo "$(date): Failed to add qdisc on {{ FIREWALL_LAN_INTERFACE }}"
+    exit 1
+  fi
 }
 
 # Parse command-line options
@@ -45,9 +56,6 @@ while true; do
       exit 0
       ;;
     --reload)
-      echo "Flushing traffic control rules..."
-      flush_tc_rules
-      echo "Flushed traffic control rules."
       echo "Applying traffic control rules..."
       apply_tc_rules
       echo "Applied traffic control rules."
